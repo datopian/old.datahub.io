@@ -39,7 +39,7 @@ and handles old CKAN URLs before any asset is served:
 ```bash
 npm run build                                   # portal + redirect map
 npx tsx worker/redirects.test.ts
-cd worker && npx wrangler deploy                # → https://old-datahub.datopian.workers.dev
+cd worker && npx wrangler deploy                # → https://old.datahub.io
 ```
 
 Only changed files are re-uploaded on later deploys. PortalJS Arc (`/portaljs-deploy`) is
