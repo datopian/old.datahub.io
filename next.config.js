@@ -1,28 +1,11 @@
-// const { withContentlayer } = require("next-contentlayer");
-
 /** @type {import('next').NextConfig} */
-const domains = [
-  "demo.dev.datopian.com",
-  "api.dev.cloud.portaljs",
-  "blob.datopian.com",
-];
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
-  images: {
-    domains,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  publicRuntimeConfig: {
-    DOMAINS: domains, // Make domains accessible at runtime
-  },
-};
-
-module.exports = nextConfig;
+  // Static export (PortalJS Arc and any static host serve out/ as-is). trailingSlash
+  // makes every route a directory with index.html, which every static host resolves.
+  output: 'export',
+  trailingSlash: true,
+  images: { unoptimized: true },
+  eslint: { ignoreDuringBuilds: true },
+}
+module.exports = nextConfig

@@ -1,0 +1,31 @@
+# old.datahub.io edge Worker: old-CKAN-URL redirects + the static export as assets.
+# Both worker/redirect-map.json and ../out come from the portal build (`npm run build` in
+# the portal root), so always build, then deploy: `npx tsx redirects.test.ts && npx wrangler deploy`.
+name = "old-datahub"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+# To serve old.datahub.io, add (needs the old.datahub.io DNS record moved to Cloudflare
+# proxied / Workers custom domain — see README):
+# routes = [{ pattern = "old.datahub.io", custom_domain = true }]
+
+[assets]
+directory = "../out"
+binding = "ASSETS"
+# The Worker runs only where it's needed: old CKAN paths (redirects) and /@ dataset pages
+# (percent-encoding fix). Everything else (JS, CSS, the Pagefind index, /search/) is
+# served straight from static assets: free, unmetered requests.
+run_worker_first = [
+  "/dataset", "/dataset/*", "/datasets", "/datasets/*",
+  "/organization", "/organization/*", "/group", "/group/*", "/tag/*",
+  "/api/*", "/uploads/*",
+  "/user", "/user/*", "/activity/*", "/revision/*", "/dashboard", "/dashboard/*",
+  "/about", "/ckan-admin/*", "/harvest", "/harvest/*",
+  "/@*", "/_next/data/*",
+]
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+
+[vars]
+CKAN_ORIGIN = "https://api.old.datahub.io"
