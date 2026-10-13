@@ -22,3 +22,6 @@ public/catalog-feeds.json
 worker/redirect-map.json
 # Pagefind index (postbuild)
 public/pagefind/
+
+# gstack browse reports
+.gstack/
