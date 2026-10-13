@@ -1,11 +1,12 @@
 import Link from 'next/link'
+import { SITE_NAME } from '../lib/site'
 
 // Site navbar, rendered on every page via `_app.tsx`. Editorial style imported
 // from the Claude Design mockups: a tall hairline-ruled bar with a Newsreader
 // italic wordmark on the left and an uppercase Work Sans "Search" link on the
 // right, over the warm cream canvas.
 //
-// BRANDING IS A PLACEHOLDER — the wordmark is the portal name (`Old DataHub`,
+// BRANDING IS A PLACEHOLDER — the wordmark is the portal name (SITE_NAME in lib/site.ts,
 // substituted by /portaljs-new-portal) set in Newsreader italic. Change the name
 // in your portal's metadata; swap the files in `public/` for your own marks. A
 // generated portal should not permanently wear the PortalJS name.
@@ -16,16 +17,24 @@ export default function Navbar() {
         <Link
           href="/"
           className="font-serif text-[21px] font-medium italic text-ink no-underline"
-          aria-label="Old DataHub — home"
+          aria-label={`${SITE_NAME} — home`}
         >
-          Old DataHub
+          {SITE_NAME}
         </Link>
-        <Link
-          href="/search"
-          className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-ink/75 transition-colors hover:text-accent"
-        >
-          Search
-        </Link>
+        <div className="flex items-center gap-7">
+          <Link
+            href="/publishers/"
+            className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-ink/75 transition-colors hover:text-accent"
+          >
+            Publishers
+          </Link>
+          <Link
+            href="/search/"
+            className="font-sans text-xs font-semibold uppercase tracking-[0.08em] text-ink/75 transition-colors hover:text-accent"
+          >
+            Search
+          </Link>
+        </div>
       </nav>
     </header>
   )

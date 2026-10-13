@@ -25,3 +25,4 @@ public/pagefind/
 
 # gstack browse reports
 .gstack/
+public/sitemap.xml

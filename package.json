@@ -8,12 +8,14 @@
   "scripts": {
     "generate:dcat": "tsx scripts/generate-dcat.ts",
     "dev": "next dev",
-    "prebuild": "npm run fetch:catalog",
+    "prebuild": "npm run fetch:catalog && npm run generate:sitemap",
     "build": "next build",
     "check-export": "node scripts/check-export.mjs",
     "start": "next start",
     "fetch:catalog": "tsx scripts/fetch-catalog.ts",
-    "postbuild": "pagefind --site out"
+    "postbuild": "pagefind --site out",
+    "generate:sitemap": "tsx scripts/generate-sitemap.ts",
+    "indexnow": "tsx scripts/indexnow.ts"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.32.0",

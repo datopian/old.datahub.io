@@ -1,9 +1,10 @@
-import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
 import { suggestedQueries } from '../lib/datasets'
 import { provider } from '../lib/providers'
+import Seo from '../components/Seo'
+import { SITE_NAME } from '../lib/site'
 
 // Popular searches are derived from the portal's own datasets at build time (see
 // suggestedQueries) rather than hardcoded, so every portal surfaces its real
@@ -27,15 +28,13 @@ export default function Home({ suggested }: { suggested: string[] }) {
 
   return (
     <>
-      <Head>
-        <title>Old DataHub</title>
-      </Head>
+      <Seo title={`${SITE_NAME} — open datasets since 2010`} path="/" />
       <main className="mx-auto max-w-[660px] px-6 pb-24 pt-16 sm:px-16 sm:pt-[104px]">
         <div className="mb-6 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-accent">
           Open Data Portal
         </div>
         <h1 className="mb-7 font-serif text-[44px] font-semibold leading-[1.06] tracking-[-0.01em] text-ink sm:text-[62px]">
-          Old DataHub
+          {SITE_NAME}
         </h1>
         <p className="mb-11 max-w-[520px] font-serif text-xl leading-[1.55] text-ink/70">
           The original DataHub: 11,000+ open datasets published since 2010.
@@ -85,6 +84,12 @@ export default function Home({ suggested }: { suggested: string[] }) {
             className="border-b border-accent pb-[3px] font-serif text-[17px] font-medium italic text-ink no-underline hover:text-accent"
           >
             Browse all datasets &rarr;
+          </Link>
+          <Link
+            href="/publishers/"
+            className="ml-8 border-b border-accent pb-[3px] font-serif text-[17px] font-medium italic text-ink no-underline hover:text-accent"
+          >
+            Browse by publisher &rarr;
           </Link>
         </div>
       </main>

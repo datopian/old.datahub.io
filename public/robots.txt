@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+# Search result pages are client-side and endless (query × filter combinations); they
+# carry noindex, and crawling them adds nothing the sitemap doesn't already list.
+Disallow: /search/?
+Disallow: /_next/data/
+
+Sitemap: https://old.datahub.io/sitemap.xml

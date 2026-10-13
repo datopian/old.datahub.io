@@ -1,4 +1,4 @@
-# Old DataHub
+# DataHub v1
 
 The static frontend for **old.datahub.io**: the original DataHub catalog (11,383 public
 datasets), served from the CKAN backend at `https://api.old.datahub.io`. Scaffolded with

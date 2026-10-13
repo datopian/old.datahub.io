@@ -1,9 +1,10 @@
-import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DebouncedInput from '../components/ui/DebouncedInput'
 import { provider } from '../lib/providers'
+import Seo from '../components/Seo'
+import { SITE_NAME } from '../lib/site'
 
 // The catalog total is baked in at build time; everything else on this page runs in
 // the browser against the static Pagefind index (built from out/ by `npm run
@@ -202,9 +203,9 @@ export default function Search({ total }: { total: number }) {
 
   return (
     <>
-      <Head>
-        <title>Search — Old DataHub</title>
-      </Head>
+      {/* Result pages are near-duplicates with endless query/filter combinations: keep
+          them out of the index, but let crawlers follow their links. */}
+      <Seo title={`Search datasets — ${SITE_NAME}`} path="/search/" noindex />
       <main className="mx-auto max-w-6xl px-6 pb-24 sm:px-16">
         <nav className="pt-7 font-sans text-[13px] font-medium text-ink/50">
           <Link href="/" className="text-inherit no-underline hover:text-accent">

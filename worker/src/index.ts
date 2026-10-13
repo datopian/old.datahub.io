@@ -15,6 +15,8 @@ export interface Env {
 }
 
 const MAP = redirectMap as Record<string, string>
+// Publishers (CKAN organizations) that have a /@<org>/ page, derived from the map values.
+const ORGS = new Set(Object.values(MAP).map((href) => href.split('/')[1].slice(1)))
 
 function redirect(location: string, status = 301): Response {
   return new Response(null, { status, headers: { Location: location, 'Cache-Control': 'public, max-age=86400' } })
@@ -60,7 +62,13 @@ export function legacyRedirect(url: URL, env: Env): Response | null {
     return redirect(origin + target)
   }
 
-  if (seg[0] === 'organization') return redirect(seg[1] ? searchUrl(origin, { org: seg[1] }) : searchUrl(origin, {}))
+  if (seg[0] === 'organization') {
+    if (!seg[1]) return redirect(origin + '/publishers/')
+    // /organization/<org> and its sub-pages (about, activity) → the publisher page.
+    const org = seg[1] === 'about' || seg[1] === 'activity' ? seg[2] : seg[1]
+    if (org && ORGS.has(org)) return redirect(origin + '/@' + org + '/')
+    return redirect(org ? searchUrl(origin, { q: org.replace(/[-_]+/g, ' ') }) : origin + '/publishers/', 302)
+  }
   if (seg[0] === 'group') return redirect(searchUrl(origin, { q: seg[1]?.replace(/[-_]+/g, ' ') }))
   if (seg[0] === 'tag' && seg[1]) return redirect(searchUrl(origin, { tag: seg[1] }))
   // Other CKAN-only pages (users, activity, revisions, about, dashboard) have no

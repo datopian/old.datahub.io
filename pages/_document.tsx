@@ -10,19 +10,9 @@ export default function Document() {
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <meta name="description" content="The original DataHub: 11,000+ open datasets published since 2010." />
         <meta name="theme-color" content="#f6f2e9" />
-        {/* DCAT feed autodiscovery — lets national/EU/US open-data portals (and
-            harvesters like data.europa.eu) find this catalog's machine-readable
-            metadata. /catalog.jsonld is the stable canonical feed, regenerated at
-            build by scripts/generate-dcat.ts. Additional profile/serialization feeds
-            are indexed in /catalog-feeds.json. See /portaljs-add-dcat. */}
-        <link
-          rel="alternate"
-          type="application/ld+json"
-          href="/catalog.jsonld"
-          title="DCAT catalog feed"
-        />
+        {/* The description, canonical and Open Graph tags are per page (components/Seo.tsx).
+            No DCAT feed link: DCAT generation is off for this catalog (see README). */}
         {/* Editorial type system (Claude Design import): Newsreader (serif),
             Work Sans (sans), IBM Plex Mono (SQL editor). Loaded via <link> — no
             build-time fetch, so the scaffold builds offline and ships no font

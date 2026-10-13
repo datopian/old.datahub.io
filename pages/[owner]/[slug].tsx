@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Head from 'next/head'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { GetStaticPaths, GetStaticProps } from 'next'
@@ -17,6 +16,8 @@ import {
 import { provider } from '../../lib/providers'
 import { withHistory } from '../../lib/history'
 import { formatDate } from '../../lib/format'
+import Seo from '../../components/Seo'
+import { absoluteUrl, publisherHref, SITE_NAME } from '../../lib/site'
 
 // DuckDB only runs in the browser, so load the query view client-side. The chunk
 // (and DuckDB-Wasm) is only fetched when a resource actually needs it — flat
@@ -125,13 +126,18 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
     descriptionHtml?: string
   }
   const formats = Array.from(new Set(resources.map((r) => String(r.format).toUpperCase()))).filter(Boolean)
+  const publisherName = ckanMeta.orgTitle || dataset.namespace
+  const pagePath = `/@${dataset.namespace}/${dataset.slug}/`
 
   return (
     <>
-      <Head>
-        <title>{`${dataset.name} — Old DataHub`}</title>
-        {dataset.description && <meta name="description" content={lead(dataset.description, 160)} />}
-      </Head>
+      <Seo
+        title={`${dataset.name} — ${SITE_NAME}`}
+        description={dataset.description ? lead(dataset.description, 160) : `${dataset.name}, a dataset published by ${publisherName} on the ${SITE_NAME}.`}
+        path={pagePath}
+        type="article"
+        jsonLd={datasetJsonLd(dataset, resources, publisherName, pagePath)}
+      />
       {/* data-pagefind-body: only dataset pages go into the static search index
           (pages/search.tsx); the hidden block below feeds its filters and result meta. */}
       <main data-pagefind-body className="mx-auto max-w-[940px] px-6 pb-24 sm:px-16">
@@ -292,7 +298,19 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
 
           {/* Metadata sidebar. */}
           <aside data-pagefind-ignore className="flex h-fit flex-col gap-[18px] rounded-sm border border-ink/[0.18] p-[26px]">
-            <SidebarField label={namespaceLabel} value={ckanMeta.orgTitle || `@${dataset.namespace}`} />
+            {/* A plain link to the publisher page gives every dataset an inbound link
+                crawlers can follow (search itself is client-side). */}
+            <div>
+              <div className="mb-1.5 font-sans text-[10px] font-semibold uppercase tracking-[0.08em] text-ink/45">
+                {namespaceLabel}
+              </div>
+              <Link
+                href={publisherHref(dataset.namespace)}
+                className="font-serif text-base font-semibold text-ink underline decoration-ink/25 underline-offset-[3px] hover:text-accent"
+              >
+                {publisherName}
+              </Link>
+            </div>
             {ckanMeta.author && <SidebarField label="Author" value={ckanMeta.author} />}
             <SidebarField
               label="Resources"
@@ -382,6 +400,45 @@ function SidebarField({ label, value }: { label: string; value: string }) {
 // Format-priority for the Download & API list: the serverless geo tiers lead
 // (GeoParquet for analysis/SQL, PMTiles for maps), then the source archive
 // (GeoJSON), then the remaining tabular/export formats. Unlisted formats sort last.
+// schema.org Dataset markup — what Google Dataset Search (and rich results) read.
+// https://developers.google.com/search/docs/appearance/structured-data/dataset
+function datasetJsonLd(dataset: Dataset, resources: Resource[], publisherName: string, pagePath: string): object {
+  const raw = (dataset.description || '').trim()
+  // Google wants 50–5000 characters of description.
+  const description =
+    raw.length >= 50
+      ? raw.slice(0, 5000)
+      : `${raw ? raw + ' — ' : ''}${dataset.name}, a dataset published by ${publisherName} on the ${SITE_NAME}.`
+  const license = dataset.licenses?.[0]
+  const ld: Record<string, unknown> = {
+    '@context': 'https://schema.org/',
+    '@type': 'Dataset',
+    name: dataset.name,
+    description,
+    url: absoluteUrl(pagePath),
+    identifier: (dataset as Dataset & { id?: string }).id,
+    keywords: dataset.keywords?.length ? dataset.keywords : undefined,
+    isAccessibleForFree: true,
+    creator: { '@type': 'Organization', name: publisherName, url: absoluteUrl(publisherHref(dataset.namespace)) },
+    publisher: { '@type': 'Organization', name: publisherName, url: absoluteUrl(publisherHref(dataset.namespace)) },
+    dateCreated: dataset.created,
+    dateModified: dataset.modified,
+    version: dataset.version,
+    license: license?.path || license?.title || license?.name,
+    includedInDataCatalog: { '@type': 'DataCatalog', name: SITE_NAME, url: absoluteUrl('/') },
+    distribution: resources
+      .filter((r) => /^https?:\/\//.test(r.path))
+      .slice(0, 25)
+      .map((r) => ({
+        '@type': 'DataDownload',
+        name: resourceLabel(r),
+        encodingFormat: String(r.format || '').toUpperCase() || undefined,
+        contentUrl: r.path,
+      })),
+  }
+  return JSON.parse(JSON.stringify(ld))
+}
+
 function humanBytes(n: number): string {
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   let i = 0
