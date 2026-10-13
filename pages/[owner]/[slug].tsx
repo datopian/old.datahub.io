@@ -115,14 +115,46 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
   // Migration/sync time is provenance about the COPY, shown as its own field so it
   // never masquerades as the data's freshness.
   const migratedAt = dataset.migratedAt && formatDate(dataset.migratedAt)
+  // Extra fields the CKAN snapshot carries (lib/providers/ckan-provider.ts); absent on
+  // static datasets.
+  const ckanMeta = dataset as typeof dataset & {
+    orgTitle?: string
+    author?: string
+    ckanUrl?: string
+    facetTags?: string[]
+    descriptionHtml?: string
+  }
+  const formats = Array.from(new Set(resources.map((r) => String(r.format).toUpperCase()))).filter(Boolean)
 
   return (
     <>
       <Head>
-        <title>{dataset.name}</title>
+        <title>{`${dataset.name} — Old DataHub`}</title>
+        {dataset.description && <meta name="description" content={lead(dataset.description, 160)} />}
       </Head>
-      <main className="mx-auto max-w-[940px] px-6 pb-24 sm:px-16">
-        <nav className="pt-7 font-sans text-[13px] font-medium text-ink/50">
+      {/* data-pagefind-body: only dataset pages go into the static search index
+          (pages/search.tsx); the hidden block below feeds its filters and result meta. */}
+      <main data-pagefind-body className="mx-auto max-w-[940px] px-6 pb-24 sm:px-16">
+        {/* data-pagefind-ignore (default "index" mode) keeps this out of the indexed text
+            and excerpts while Pagefind still reads its filters, meta and sort. */}
+        <div hidden data-pagefind-ignore>
+          <span data-pagefind-filter="publisher">{ckanMeta.orgTitle || dataset.namespace}</span>
+          <span data-pagefind-meta="publisher">{ckanMeta.orgTitle || dataset.namespace}</span>
+          <span data-pagefind-meta="namespace">{dataset.namespace}</span>
+          <span data-pagefind-filter="org">{dataset.namespace}</span>
+          {formats.map((f) => (
+            <span key={f} data-pagefind-filter="format">{f}</span>
+          ))}
+          {(ckanMeta.facetTags ?? []).slice(0, 30).map((kw) => (
+            <span key={kw} data-pagefind-filter="tag">{kw}</span>
+          ))}
+          {dataset.licenses?.[0] && (
+            <span data-pagefind-filter="license">{dataset.licenses[0].title ?? dataset.licenses[0].name}</span>
+          )}
+          {lastUpdated && <span data-pagefind-meta="updated">{lastUpdated}</span>}
+          {dataset.modified && <span data-pagefind-sort="modified">{dataset.modified.slice(0, 10)}</span>}
+        </div>
+        <nav data-pagefind-ignore className="pt-7 font-sans text-[13px] font-medium text-ink/50">
           <Link href="/" className="text-inherit no-underline hover:text-accent">
             Home
           </Link>{' '}
@@ -134,15 +166,18 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
         </nav>
 
         <header className="max-w-[640px] pb-10 pt-8">
-          <div className="mb-4 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+          <div data-pagefind-ignore className="mb-4 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-accent">
             Dataset
           </div>
-          <h1 className="mb-[18px] font-serif text-[42px] font-semibold leading-tight text-ink">
+          <h1
+            data-pagefind-meta="title"
+            className="mb-[18px] break-words font-serif text-[42px] font-semibold leading-tight text-ink"
+          >
             {dataset.name}
           </h1>
           {dataset.description && (
-            <p className="font-serif text-[19px] italic leading-[1.6] text-ink/70">
-              {dataset.description}
+            <p data-pagefind-ignore className="font-serif text-[19px] italic leading-[1.6] text-ink/70">
+              {lead(dataset.description)}
             </p>
           )}
         </header>
@@ -154,7 +189,7 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
                 with Table/Chart/SQL tabs). A tabular dataset gets a filterable
                 Table or the DuckDB SQL editor per previewable file. Download-only
                 formats never render here — they live in the Download & API block. */}
-            <div className="border-t border-ink/[0.15] pt-[22px]">
+            <div className={hasGeo || previewResources.length > 0 ? 'border-t border-ink/[0.15] pt-[22px]' : ''}>
               {hasGeo && (
                 <GeoSection
                   pmtilesResource={pmtilesResource}
@@ -164,13 +199,34 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
                 />
               )}
               {previewResources.map((r, i) => (
-                <ResourceSection
+                <LazyResourceSection
                   key={r.name + i}
                   resource={r}
                   showHeading={previewResources.length > 1}
                 />
               ))}
             </div>
+
+            {/* About — the full description (harvested catalogs often carry long notes). */}
+            {dataset.description && dataset.description !== lead(dataset.description) && (
+              <section className="mt-11">
+                <SectionLabel>About</SectionLabel>
+                {ckanMeta.descriptionHtml ? (
+                  <div
+                    className="prose prose-sm max-w-none break-words font-serif text-[16px] leading-[1.65] text-ink/80 prose-a:text-accent"
+                    // Rendered from CKAN Markdown and sanitized at build time (scripts/fetch-catalog.ts).
+                    dangerouslySetInnerHTML={{ __html: ckanMeta.descriptionHtml }}
+                  />
+                ) : (
+                  <p className="whitespace-pre-line break-words font-serif text-[16px] leading-[1.65] text-ink/80">
+                    {dataset.description}
+                  </p>
+                )}
+              </section>
+            )}
+            {dataset.description && dataset.description === lead(dataset.description) && (
+              <p hidden>{dataset.description}</p>
+            )}
 
             {/* Download & API — every file is a FORMAT of the one dataset, not a
                 separate resource: a single block, each row with its size, a
@@ -184,17 +240,6 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
             {/* Activity — every resource commit across the dataset, newest first. */}
             {activity.length > 0 && <ActivityFeed activity={activity} />}
 
-            {/* Views placeholder — charts and maps are added here by the
-                /portaljs-add-chart and /portaljs-add-map skills. */}
-            <SectionLabel className="mt-11">Views</SectionLabel>
-            <div className="border border-ink/[0.15] p-11 text-center">
-              <div className="mb-2 font-serif text-[17px] italic text-ink/55">
-                No views yet.
-              </div>
-              <div className="font-sans text-xs text-ink/40">
-                Charts and maps for this dataset are added here.
-              </div>
-            </div>
 
             {/* Sources & license — Data Package descriptor fields. */}
             {((dataset.licenses && dataset.licenses.length > 0) ||
@@ -246,8 +291,9 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
           </div>
 
           {/* Metadata sidebar. */}
-          <aside className="flex h-fit flex-col gap-[18px] rounded-sm border border-ink/[0.18] p-[26px]">
-            <SidebarField label={namespaceLabel} value={`@${dataset.namespace}`} />
+          <aside data-pagefind-ignore className="flex h-fit flex-col gap-[18px] rounded-sm border border-ink/[0.18] p-[26px]">
+            <SidebarField label={namespaceLabel} value={ckanMeta.orgTitle || `@${dataset.namespace}`} />
+            {ckanMeta.author && <SidebarField label="Author" value={ckanMeta.author} />}
             <SidebarField
               label="Resources"
               value={`${resources.length} file${resources.length === 1 ? '' : 's'}`}
@@ -289,6 +335,14 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
                 </a>
               </div>
             )}
+            {ckanMeta.ckanUrl && (
+              <a
+                href={`${ckanMeta.ckanUrl.replace(/\/dataset\//, '/api/3/action/package_show?id=')}`}
+                className="font-sans text-[11px] font-medium text-ink/55 underline underline-offset-2 hover:text-accent"
+              >
+                Metadata via CKAN API
+              </a>
+            )}
           </aside>
         </div>
       </main>
@@ -306,6 +360,7 @@ function SectionLabel({
 }) {
   return (
     <div
+      data-pagefind-ignore
       className={`mb-4 font-sans text-[11px] font-semibold uppercase tracking-[0.1em] text-ink/45 ${className}`}
     >
       {children}
@@ -327,6 +382,47 @@ function SidebarField({ label, value }: { label: string; value: string }) {
 // Format-priority for the Download & API list: the serverless geo tiers lead
 // (GeoParquet for analysis/SQL, PMTiles for maps), then the source archive
 // (GeoJSON), then the remaining tabular/export formats. Unlisted formats sort last.
+function humanBytes(n: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let i = 0
+  let v = n
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024
+    i++
+  }
+  return `${v < 10 && i > 0 ? v.toFixed(1) : Math.round(v)} ${units[i]}`
+}
+
+// The header shows a short lead; the full (often long, harvested) description lives
+// in the About section below.
+function lead(s: string, max = 320): string {
+  const first = s.split(/\n\s*\n/)[0].trim()
+  if (first.length <= max) return first
+  const cut = first.slice(0, max)
+  const space = cut.lastIndexOf(' ')
+  return cut.slice(0, space > 200 ? space : max) + '…'
+}
+
+// An inline data preview only loads when asked: a CSV can be large or hosted somewhere
+// without CORS, and opening it eagerly would download it on every page view.
+function LazyResourceSection({ resource, showHeading }: { resource: Resource; showHeading: boolean }) {
+  const [open, setOpen] = useState(false)
+  if (open) return <ResourceSection resource={resource} showHeading={showHeading} />
+  return (
+    <div className="mb-6 flex items-center justify-between gap-4 border border-ink/[0.15] px-5 py-4">
+      <span className="min-w-0 truncate font-sans text-[13px] text-ink/70">{resourceLabel(resource)}</span>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        data-pagefind-ignore
+        className="flex-shrink-0 font-sans text-xs font-semibold uppercase tracking-[0.06em] text-accent hover:text-ink"
+      >
+        Preview data
+      </button>
+    </div>
+  )
+}
+
 function downloadRank(format: string): number {
   const order = ['geoparquet', 'pmtiles', 'geojson', 'csv', 'tsv', 'parquet', 'json']
   const i = order.indexOf(format)
@@ -399,20 +495,23 @@ function ResourceDownloadRow({ resource }: { resource: Resource }) {
   const history = resource.history ?? []
   const url = resourceUrl(resource)
   const isPublicUrl = /^(https?:)?\/\//.test(resource.path)
-  // Newest version first (see lib/history.ts), so history[0] is the current size.
-  const size = history[0]?.size
+  // Newest version first (see lib/history.ts), so history[0] is the current size. CKAN
+  // resources carry their byte size instead.
+  const ckanSize = (resource as Resource & { size?: number }).size
+  const size = history[0]?.size ?? (ckanSize ? humanBytes(ckanSize) : undefined)
   const isColumnar = resource.format === 'geoparquet' || resource.format === 'parquet'
-  const caption = downloadCaption(resource.format)
+  const caption = downloadCaption(resource.format) || resource.description
 
   return (
-    <div className="border-b border-dotted border-ink/25">
+    // id = the CKAN resource id, so old /dataset/<x>/resource/<id> links land here.
+    <div id={resource.name} className="scroll-mt-6 border-b border-dotted border-ink/25">
       <div className="flex items-start justify-between gap-4 py-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <span className="min-w-0 truncate font-sans text-[15px] font-medium text-ink">
               {resourceLabel(resource)}
             </span>
-            <span className="flex-shrink-0 border border-accent/50 px-2 py-1 font-sans text-[10px] font-semibold uppercase tracking-[0.06em] text-accent">
+            <span data-pagefind-ignore className="flex-shrink-0 border border-accent/50 px-2 py-1 font-sans text-[10px] font-semibold uppercase tracking-[0.06em] text-accent">
               {resource.format}
             </span>
             {size && (
@@ -420,10 +519,10 @@ function ResourceDownloadRow({ resource }: { resource: Resource }) {
             )}
           </div>
           {caption && (
-            <div className="mt-1 font-sans text-[12px] text-ink/50">{caption}</div>
+            <div className="mt-1 line-clamp-3 font-sans text-[12px] text-ink/50">{caption}</div>
           )}
         </div>
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+        <div data-pagefind-ignore className="flex flex-shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
           <a
             href={url}
             className="whitespace-nowrap font-sans text-[11px] font-medium text-ink/55 underline underline-offset-2 hover:text-accent"

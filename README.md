@@ -1,3 +1,46 @@
+# Old DataHub
+
+The static frontend for **old.datahub.io**: the original DataHub catalog (11,383 public
+datasets), served from the CKAN backend at `https://api.old.datahub.io`. Scaffolded with
+`/portaljs-new-portal` and wired to CKAN with `/portaljs-connect-ckan`, adapted for a
+large catalog.
+
+## How it builds
+
+| Step | What happens |
+|---|---|
+| `prebuild` → `npm run fetch:catalog` | `scripts/fetch-catalog.ts` pages the whole catalog out of CKAN (`package_search`, 1000 per request, ~30 s). Writes `.cache/catalog.json` (read by `lib/providers/ckan-provider.ts`) and `worker/redirect-map.json`. Notes are rendered from Markdown and sanitized here. |
+| `next build` | Static export to `out/`: one page per dataset at `/@<org>/<dataset>/`. |
+| `postbuild` → `pagefind --site out` | Builds the chunked static search index in `out/pagefind/`. `/search` queries it in the browser. Facets are publisher, format, tag and license; only tags on 5+ datasets become filters. |
+
+Nothing in the browser calls CKAN except resource downloads and the "Metadata via CKAN API"
+link. Data is fixed at build time, so **rebuild to pick up CKAN changes**.
+
+```bash
+npm install
+npm run build                    # full catalog
+MAX_DATASETS=300 npm run build   # quick dev build
+npx serve out                    # or any static server
+DMS=https://other-ckan npm run build   # point at another CKAN
+```
+
+## Deploy
+
+1. `/portaljs-deploy` publishes `out/` to PortalJS Arc at `old-datahub.arc.portaljs.com`.
+2. `worker/` is a Cloudflare Worker for `old.datahub.io`, because Arc has no custom domains
+   yet. It 301s old CKAN URLs (`/dataset/<name|id>`, `/dataset/<x>/resource/<id>`,
+   `/organization/<org>`, `/dataset?q=…`) to the new pages. It sends `/api/*` and file
+   downloads to `api.old.datahub.io` and proxies everything else to Arc. Deploy it
+   together with the portal, since the map comes from the same fetch:
+   `npx tsx worker/redirects.test.ts && cd worker && npx wrangler deploy`.
+
+Not included on purpose:
+- **DCAT feeds.** At this size they would be ~100 MB of single files; use `/portaljs-add-dcat` with pagination if needed.
+- **The datastore.** It wasn't restored.
+- **Chart and map views.** Those skills target the static-manifest showcase.
+
+---
+
 # PortalJS Catalog Template (dynamic routes)
 
 A template variant for portals with **many datasets**. Instead of one page file per

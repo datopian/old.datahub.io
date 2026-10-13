@@ -16,3 +16,9 @@ public/catalog-feeds.json
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# CKAN snapshot + redirect map (npm run fetch:catalog → prebuild)
+.cache/
+worker/redirect-map.json
+# Pagefind index (postbuild)
+public/pagefind/

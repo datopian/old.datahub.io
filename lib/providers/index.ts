@@ -1,3 +1,4 @@
+import { CkanProvider, hasCatalogSnapshot } from './ckan-provider'
 import { StaticProvider } from './static-provider'
 import type { DataProvider } from './types'
 
@@ -28,6 +29,9 @@ export type {
 //
 // See ./README.md for the contract and a guide to adding one.
 export function getProvider(): DataProvider {
+  // CKAN snapshot (scripts/fetch-catalog.ts → .cache/catalog.json), wired by
+  // /portaljs-connect-ckan. PROVIDER=static forces the datasets.json default.
+  if (process.env.PROVIDER !== 'static' && hasCatalogSnapshot()) return new CkanProvider()
   return new StaticProvider()
 }
 
