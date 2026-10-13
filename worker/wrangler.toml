@@ -13,8 +13,17 @@ workers_dev = true
 [assets]
 directory = "../out"
 binding = "ASSETS"
-# Redirect logic runs before any asset is served.
-run_worker_first = true
+# The Worker runs only where it's needed: old CKAN paths (redirects) and /@ dataset pages
+# (percent-encoding fix). Everything else (JS, CSS, the Pagefind index, /search/) is
+# served straight from static assets: free, unmetered requests.
+run_worker_first = [
+  "/dataset", "/dataset/*", "/datasets", "/datasets/*",
+  "/organization", "/organization/*", "/group", "/group/*", "/tag/*",
+  "/api/*", "/uploads/*",
+  "/user", "/user/*", "/activity/*", "/revision/*", "/dashboard", "/dashboard/*",
+  "/about", "/ckan-admin/*", "/harvest", "/harvest/*",
+  "/@*", "/_next/data/*",
+]
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 
