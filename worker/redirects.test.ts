@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import map from './redirect-map.json'
 import { legacyRedirect } from './src/index'
 
-const env = { ARC_ORIGIN: 'https://old-datahub.arc.portaljs.com', CKAN_ORIGIN: 'https://api.old.datahub.io' }
+const env = { CKAN_ORIGIN: 'https://api.old.datahub.io', ASSETS: { fetch: async () => new Response() } }
 const go = (path: string) => {
   const r = legacyRedirect(new URL('https://old.datahub.io' + path), env)
   return r ? `${r.status} ${r.headers.get('Location')}` : 'proxy'

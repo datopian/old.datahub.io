@@ -26,13 +26,31 @@ DMS=https://other-ckan npm run build   # point at another CKAN
 
 ## Deploy
 
-1. `/portaljs-deploy` publishes `out/` to PortalJS Arc at `old-datahub.arc.portaljs.com`.
-2. `worker/` is a Cloudflare Worker for `old.datahub.io`, because Arc has no custom domains
-   yet. It 301s old CKAN URLs (`/dataset/<name|id>`, `/dataset/<x>/resource/<id>`,
-   `/organization/<org>`, `/dataset?q=…`) to the new pages. It sends `/api/*` and file
-   downloads to `api.old.datahub.io` and proxies everything else to Arc. Deploy it
-   together with the portal, since the map comes from the same fetch:
-   `npx tsx worker/redirects.test.ts && cd worker && npx wrangler deploy`.
+The site is the Cloudflare Worker in `worker/`. It serves `out/` as Workers Static Assets
+and handles old CKAN URLs before any asset is served:
+
+- **Old CKAN URLs** get a 301 to the new pages: `/dataset/<name|id>`, `/dataset/<x>/resource/<id>`
+  (to the `#<id>` row), `/organization/<org>`, `/dataset?q=…&tags=…&res_format=…`.
+- **`/api/*` and file downloads** go to `api.old.datahub.io`. The API gets a 308, so POST
+  stays POST.
+- **Dataset pages** are looked up with `@` percent-encoded, so `/@<org>/<dataset>/` stays a
+  clean 200.
+
+```bash
+npm run build                                   # portal + redirect map
+npx tsx worker/redirects.test.ts
+cd worker && npx wrangler deploy                # → https://old-datahub.datopian.workers.dev
+```
+
+Only changed files are re-uploaded on later deploys. PortalJS Arc (`/portaljs-deploy`) is
+the intended host, but its upload API currently fails on this 34k-file export (Cloudflare
+1102, a resource limit). It also has no custom domains, so the Worker would be needed in
+front of it anyway.
+
+**Going live on old.datahub.io** needs one DNS change in the datahub.io zone. Replace the
+DNS-only Vercel CNAME with a Workers custom domain: uncomment `routes` in
+`worker/wrangler.toml` and deploy, or add it in the dashboard under Workers → old-datahub →
+Domains.
 
 Not included on purpose:
 - **DCAT feeds.** At this size they would be ~100 MB of single files; use `/portaljs-add-dcat` with pagination if needed.

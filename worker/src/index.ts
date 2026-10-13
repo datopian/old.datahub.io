@@ -5,13 +5,13 @@
 //    the name/id → path map generated at build time (scripts/fetch-catalog.ts).
 // 2. The CKAN API and file downloads go to the CKAN backend (api.old.datahub.io), which
 //    still serves them (downloads redirect on to R2).
-// 3. Everything else is proxied to the static export hosted on PortalJS Arc, which has no
-//    custom-domain support yet.
+// 3. Everything else is the static export (out/), served from this Worker's static
+//    assets. (PortalJS Arc's upload API can't take a 34k-file export yet.)
 import redirectMap from '../redirect-map.json'
 
 export interface Env {
-  ARC_ORIGIN: string // e.g. https://old-datahub.arc.portaljs.com
   CKAN_ORIGIN: string // e.g. https://api.old.datahub.io
+  ASSETS: { fetch: (req: Request) => Promise<Response> } // the static export (wrangler.toml [assets])
 }
 
 const MAP = redirectMap as Record<string, string>
@@ -77,20 +77,14 @@ export default {
     const legacy = legacyRedirect(url, env)
     if (legacy) return legacy
 
-    // Proxy to the static export on Arc, cached at the edge.
-    const upstream = new URL(url.pathname + url.search, env.ARC_ORIGIN)
-    const res = await fetch(upstream.toString(), {
-      method: request.method === 'HEAD' ? 'HEAD' : 'GET',
-      headers: { Accept: request.headers.get('Accept') || '*/*', 'Accept-Encoding': 'gzip, br' },
-      redirect: 'manual',
-      cf: { cacheEverything: true, cacheTtl: 3600 },
-    })
-    // Keep Arc-issued redirects (e.g. adding a trailing slash) on old.datahub.io.
-    const loc = res.headers.get('Location')
-    if (loc && res.status >= 300 && res.status < 400) {
-      const l = new URL(loc, env.ARC_ORIGIN)
-      if (l.origin === new URL(env.ARC_ORIGIN).origin) return redirect(url.origin + l.pathname + l.search, res.status)
+    // The assets layer stores dataset pages under %40-encoded paths and 307s a literal
+    // `/@org/…` to `/%40org/…`. Look them up encoded so visitors keep the clean
+    // /@<org>/<dataset>/ URL and get a 200 with no redirect.
+    if (url.pathname.includes('@')) {
+      const encoded = new URL(url)
+      encoded.pathname = url.pathname.replace(/@/g, '%40')
+      return env.ASSETS.fetch(new Request(encoded.toString(), request))
     }
-    return new Response(res.body, res)
+    return env.ASSETS.fetch(request)
   },
 }
