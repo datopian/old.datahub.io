@@ -18,6 +18,7 @@ import { withHistory } from '../../lib/history'
 import { formatDate } from '../../lib/format'
 import Seo from '../../components/Seo'
 import { absoluteUrl, publisherHref, SITE_NAME } from '../../lib/site'
+import { track } from '../../lib/analytics'
 
 // DuckDB only runs in the browser, so load the query view client-side. The chunk
 // (and DuckDB-Wasm) is only fetched when a resource actually needs it — flat
@@ -140,7 +141,21 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
       />
       {/* data-pagefind-body: only dataset pages go into the static search index
           (pages/search.tsx); the hidden block below feeds its filters and result meta. */}
-      <main data-pagefind-body className="mx-auto max-w-[940px] px-6 pb-24 sm:px-16">
+      <main
+        data-pagefind-body
+        className="mx-auto max-w-[940px] px-6 pb-24 sm:px-16"
+        onClick={(e) => {
+          const a = (e.target as HTMLElement).closest('a[data-download]') as HTMLAnchorElement | null
+          if (a) {
+            track('resource_download', {
+              dataset: `${dataset.namespace}/${dataset.slug}`,
+              publisher: dataset.namespace,
+              resource_id: a.dataset.resource,
+              format: a.dataset.format,
+            })
+          }
+        }}
+      >
         {/* data-pagefind-ignore (default "index" mode) keeps this out of the indexed text
             and excerpts while Pagefind still reads its filters, meta and sort. */}
         <div hidden data-pagefind-ignore>
@@ -347,6 +362,9 @@ export default function DatasetPage({ dataset, resources, activity }: PageProps)
               <div className="border-t border-ink/[0.15] pt-[18px]">
                 <a
                   href={resourceUrl(primary)}
+                  data-download
+                  data-resource={primary.name}
+                  data-format={String(primary.format)}
                   className="block rounded-sm bg-ink px-3 py-3 text-center font-sans text-xs font-semibold uppercase tracking-[0.06em] text-cream no-underline"
                 >
                   Download {primary.format}
@@ -582,6 +600,9 @@ function ResourceDownloadRow({ resource }: { resource: Resource }) {
         <div data-pagefind-ignore className="flex flex-shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
           <a
             href={url}
+            data-download
+            data-resource={resource.name}
+            data-format={String(resource.format)}
             className="whitespace-nowrap font-sans text-[11px] font-medium text-ink/55 underline underline-offset-2 hover:text-accent"
           >
             Download

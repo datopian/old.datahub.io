@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DebouncedInput from '../components/ui/DebouncedInput'
 import { provider } from '../lib/providers'
+import { track } from '../lib/analytics'
 import Seo from '../components/Seo'
 import { SITE_NAME } from '../lib/site'
 
@@ -136,6 +137,10 @@ export default function Search({ total }: { total: number }) {
       setResults(search.results)
       setCounts(search.filters ?? {})
       setSearching(false)
+      // What people look for (and find nothing for) is the most useful signal here.
+      if (q || Object.keys(active).length) {
+        track('dataset_search', { query: q, filters: active, result_count: search.results.length })
+      }
     })()
   }, [query, filters, ready, router.isReady])
 

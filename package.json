@@ -25,6 +25,7 @@
     "next": "^16.2.7",
     "papaparse": "^5.4.0",
     "pmtiles": "^4.0.0",
+    "posthog-js": "1.434.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
