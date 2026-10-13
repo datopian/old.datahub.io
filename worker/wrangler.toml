@@ -6,9 +6,9 @@ main = "src/index.ts"
 compatibility_date = "2026-09-01"
 workers_dev = true
 
-# To serve old.datahub.io, add (needs the old.datahub.io DNS record moved to Cloudflare
-# proxied / Workers custom domain — see README):
-# routes = [{ pattern = "old.datahub.io", custom_domain = true }]
+# Live on old.datahub.io as a Workers custom domain (DNS cut over 2026-10-13). Keeping it
+# here means `wrangler deploy` keeps the domain attached.
+routes = [{ pattern = "old.datahub.io", custom_domain = true }]
 
 [assets]
 directory = "../out"

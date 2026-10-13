@@ -47,10 +47,8 @@ the intended host, but its upload API currently fails on this 34k-file export (C
 1102, a resource limit). It also has no custom domains, so the Worker would be needed in
 front of it anyway.
 
-**Going live on old.datahub.io** needs one DNS change in the datahub.io zone. Replace the
-DNS-only Vercel CNAME with a Workers custom domain: uncomment `routes` in
-`worker/wrangler.toml` and deploy, or add it in the dashboard under Workers → old-datahub →
-Domains.
+**Live on old.datahub.io**, a Workers custom domain since 2026-10-13. `routes` in
+`worker/wrangler.toml` keeps the domain attached across deploys.
 
 Not included on purpose:
 - **DCAT feeds.** At this size they would be ~100 MB of single files; use `/portaljs-add-dcat` with pagination if needed.
